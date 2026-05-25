@@ -1,61 +1,131 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Opening in IDE...</title>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      margin: 0;
-      background: #f4f5f7;
-    }
-    .card {
-      background: white;
-      border-radius: 8px;
-      padding: 2rem 3rem;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
-      text-align: center;
-    }
-    .spinner {
-      width: 32px;
-      height: 32px;
-      border: 3px solid #ddd;
-      border-top-color: #0052cc;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin: 0 auto 1rem;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    a { color: #0052cc; }
-  </style>
-</head>
-<body>
+
+<style>
+  .wrap { padding: 1.5rem 0; max-width: 660px; }
+  .card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1.25rem 1.5rem; }
+  label { font-size: 13px; color: var(--color-text-secondary); display: block; margin-bottom: 6px; }
+  input { width: 100%; box-sizing: border-box; }
+  .row { margin-bottom: 1rem; }
+  .result-box { background: var(--color-background-secondary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 12px 14px; font-family: var(--font-mono); font-size: 13px; color: var(--color-text-primary); word-break: break-all; min-height: 42px; line-height: 1.6; }
+  .result-box.empty { color: var(--color-text-tertiary); font-family: var(--font-sans); font-size: 13px; }
+  .actions { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
+  .actions button { font-size: 13px; }
+  .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: var(--border-radius-md); background: var(--color-background-success); color: var(--color-text-success); opacity: 0; transition: opacity 0.3s; }
+  .badge.show { opacity: 1; }
+  .error { font-size: 12px; color: var(--color-text-danger); margin-top: 4px; display: none; }
+  .base-info { font-size: 12px; color: var(--color-text-tertiary); margin-top: 6px; font-family: var(--font-mono); }
+  .section-label { font-size: 11px; font-weight: 500; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; }
+  .saved-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--color-background-success); margin-left: 6px; opacity: 0; transition: opacity 0.3s; vertical-align: middle; }
+  .saved-dot.show { opacity: 1; }
+  .hint { font-size: 12px; color: var(--color-text-tertiary); margin-top: 5px; }
+</style>
+
+<div class="wrap">
   <div class="card">
-    <div class="spinner"></div>
-    <h2>Opening in IDE…</h2>
-    <p id="status">Launching JetBrains IDE</p>
-    <p><small><a id="link" href="#">Click here if nothing happens</a></small></p>
+    <div class="section-label">Parametry</div>
+
+    <div class="row">
+      <label for="project-input">
+        Nazwa projektu
+        <span class="saved-dot" id="proj-dot"></span>
+      </label>
+      <input type="text" id="project-input" placeholder="np. RTM" oninput="onProjectInput()" />
+    </div>
+
+    <div class="row">
+      <label for="class-input">Klasa (FQN)</label>
+      <input type="text" id="class-input" placeholder="com.example.MyClass" oninput="generate()" />
+      <div class="hint">Wklej pełną nazwę klasy — np. <code>com.rtm.service.RequirementsEntityMigrator</code></div>
+    </div>
+
+    <div class="row">
+      <label>Gotowy link do Confluence</label>
+      <div class="result-box empty" id="result">Uzupełnij pola powyżej…</div>
+      <div class="base-info" id="base-info"></div>
+    </div>
+
+    <div class="actions">
+      <button id="copy-btn" onclick="copyLink()" disabled>
+        <i class="ti ti-copy" aria-hidden="true"></i> Kopiuj
+      </button>
+      <button id="test-btn" onclick="testLink()" disabled>
+        <i class="ti ti-external-link" aria-hidden="true"></i> Testuj
+      </button>
+      <span class="badge" id="copy-badge">Skopiowano!</span>
+    </div>
   </div>
+</div>
 
-  <script>
-    const params = new URLSearchParams(location.search);
-    const target = params.get("url");
-    const ALLOWED = ["jetbrains://", "idea://", "vscode://"];
+<script>
+  const LS_PROJECT = "ide-link-gen-project";
 
-    if (target && ALLOWED.some(p => target.startsWith(p))) {
-      document.getElementById("link").href = target;
-      document.getElementById("status").textContent = decodeURIComponent(target).slice(0, 60) + "…";
-      setTimeout(() => { window.location = target; }, 500);
-    } else {
-      document.querySelector(".spinner").style.display = "none";
-      document.querySelector("h2").textContent = "❌ Invalid link";
-      document.getElementById("status").textContent = "Missing or disallowed URL parameter.";
-      document.getElementById("link").style.display = "none";
+  const projEl = document.getElementById("project-input");
+  const classEl = document.getElementById("class-input");
+  const resultEl = document.getElementById("result");
+  const copyBtn = document.getElementById("copy-btn");
+  const testBtn = document.getElementById("test-btn");
+  const baseInfoEl = document.getElementById("base-info");
+  const projDot = document.getElementById("proj-dot");
+
+  let projTimer = null;
+
+  const savedProj = localStorage.getItem(LS_PROJECT);
+  if (savedProj) projEl.value = savedProj;
+
+  function getBase() {
+    const loc = window.location;
+    return loc.origin + loc.pathname.replace(/\/?$/, "/");
+  }
+
+  baseInfoEl.textContent = "Base URL: " + getBase();
+
+  function onProjectInput() {
+    clearTimeout(projTimer);
+    projTimer = setTimeout(() => {
+      const val = projEl.value.trim();
+      if (val) {
+        localStorage.setItem(LS_PROJECT, val);
+        projDot.classList.add("show");
+        setTimeout(() => projDot.classList.remove("show"), 2000);
+      }
+    }, 600);
+    generate();
+  }
+
+  function generate() {
+    const project = projEl.value.trim();
+    const fqn = classEl.value.trim();
+
+    if (!project || !fqn) {
+      resultEl.textContent = "Uzupełnij pola powyżej…";
+      resultEl.className = "result-box empty";
+      copyBtn.disabled = true;
+      testBtn.disabled = true;
+      return;
     }
-  </script>
-</body>
-</html>
+
+    const ideUrl = `jetbrains://idea/navigate/reference?project=${encodeURIComponent(project)}&fqn=${encodeURIComponent(fqn)}`;
+    const full = getBase() + "?url=" + encodeURIComponent(ideUrl);
+
+    resultEl.textContent = full;
+    resultEl.className = "result-box";
+    copyBtn.disabled = false;
+    testBtn.disabled = false;
+  }
+
+  function copyLink() {
+    const text = resultEl.textContent;
+    if (!text || resultEl.classList.contains("empty")) return;
+    navigator.clipboard.writeText(text).then(() => {
+      const b = document.getElementById("copy-badge");
+      b.classList.add("show");
+      setTimeout(() => b.classList.remove("show"), 2000);
+    });
+  }
+
+  function testLink() {
+    const text = resultEl.textContent;
+    if (text && !resultEl.classList.contains("empty")) window.open(text, "_blank");
+  }
+
+  generate();
+</script>
