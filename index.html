@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Opening in IDE...</title>
+</head>
+<body>
+  <p>Opening in IDE... <a id="link" href="#">Click here if nothing happens</a></p>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const target = params.get("url");
+
+    const ALLOWED_PROTOCOLS = ["jetbrains://", "idea://", "vscode://"];
+
+    if (target && ALLOWED_PROTOCOLS.some(p => target.startsWith(p))) {
+      document.getElementById("link").href = target;
+      window.location = target;
+    } else {
+      document.body.innerHTML = "<p>❌ Invalid or missing URL parameter.</p>";
+    }
+  </script>
+</body>
+</html>
