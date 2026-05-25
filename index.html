@@ -1,28 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IDE Link</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-<style>
-  .wrap { padding: 1.5rem 0; max-width: 660px; }
-  .card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1.25rem 1.5rem; }
-  label { font-size: 13px; color: var(--color-text-secondary); display: block; margin-bottom: 6px; }
-  input { width: 100%; box-sizing: border-box; }
-  .row { margin-bottom: 1rem; }
-  .result-box { background: var(--color-background-secondary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 12px 14px; font-family: var(--font-mono); font-size: 13px; color: var(--color-text-primary); word-break: break-all; min-height: 42px; line-height: 1.6; }
-  .result-box.empty { color: var(--color-text-tertiary); font-family: var(--font-sans); font-size: 13px; }
-  .actions { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
-  .actions button { font-size: 13px; }
-  .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: var(--border-radius-md); background: var(--color-background-success); color: var(--color-text-success); opacity: 0; transition: opacity 0.3s; }
-  .badge.show { opacity: 1; }
-  .error { font-size: 12px; color: var(--color-text-danger); margin-top: 4px; display: none; }
-  .base-info { font-size: 12px; color: var(--color-text-tertiary); margin-top: 6px; font-family: var(--font-mono); }
-  .section-label { font-size: 11px; font-weight: 500; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; }
-  .saved-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--color-background-success); margin-left: 6px; opacity: 0; transition: opacity 0.3s; vertical-align: middle; }
-  .saved-dot.show { opacity: 1; }
-  .hint { font-size: 12px; color: var(--color-text-tertiary); margin-top: 5px; }
-</style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f4f5f7;
+      color: #172b4d;
+      min-height: 100vh;
+    }
 
-<div class="wrap">
+    /* ── redirect screen ── */
+    #redirect-screen {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    .redirect-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 2.5rem 3rem;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+      text-align: center;
+      max-width: 420px;
+      width: 90%;
+    }
+
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid #dfe1e6;
+      border-top-color: #0052cc;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto 1.25rem;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .redirect-card h1 { font-size: 18px; font-weight: 500; margin-bottom: 0.5rem; }
+    .redirect-card p  { font-size: 13px; color: #6b778c; margin-bottom: 1rem; word-break: break-all; }
+    .redirect-card a  { font-size: 13px; color: #0052cc; }
+
+    /* ── generator screen ── */
+    #generator-screen {
+      display: none;
+      max-width: 560px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem;
+    }
+
+    #generator-screen h1 {
+      font-size: 20px;
+      font-weight: 500;
+      margin-bottom: 0.25rem;
+    }
+
+    #generator-screen .subtitle {
+      font-size: 13px;
+      color: #6b778c;
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid #dfe1e6;
+      padding: 1.5rem;
+    }
+
+    .row { margin-bottom: 1.25rem; }
+    .row:last-child { margin-bottom: 0; }
+
+    label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: #6b778c;
+      margin-bottom: 6px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #dfe1e6;
+      border-radius: 6px;
+      font-size: 14px;
+      color: #172b4d;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    input[type="text"]:focus { border-color: #4c9aff; box-shadow: 0 0 0 2px rgba(76,154,255,0.2); }
+
+    .hint { font-size: 12px; color: #97a0af; margin-top: 5px; }
+
+    .result-wrap { margin-top: 1.5rem; }
+
+    .result-label { font-size: 12px; color: #6b778c; margin-bottom: 6px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+
+    .result-box {
+      background: #f4f5f7;
+      border: 1px solid #dfe1e6;
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 12px;
+      color: #172b4d;
+      word-break: break-all;
+      line-height: 1.6;
+      min-height: 40px;
+    }
+
+    .result-box.empty { color: #97a0af; font-family: inherit; font-size: 13px; }
+
+    .actions { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
+
+    button {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      font-size: 13px;
+      border: 1px solid #dfe1e6;
+      border-radius: 6px;
+      background: #fff;
+      color: #172b4d;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    button:hover:not(:disabled) { background: #f4f5f7; }
+    button:disabled { opacity: 0.4; cursor: default; }
+
+    .saved-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #36b37e;
+      opacity: 0;
+      transition: opacity 0.3s;
+      flex-shrink: 0;
+    }
+
+    .saved-dot.show { opacity: 1; }
+
+    .badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 20px;
+      background: #e3fcef;
+      color: #006644;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .badge.show { opacity: 1; }
+
+    .base-hint {
+      font-size: 11px;
+      color: #97a0af;
+      margin-top: 8px;
+      font-family: "SFMono-Regular", Consolas, monospace;
+    }
+
+    .error { font-size: 12px; color: #de350b; margin-top: 5px; display: none; }
+  </style>
+</head>
+<body>
+
+<!-- Redirect screen -->
+<div id="redirect-screen">
+  <div class="redirect-card">
+    <div class="spinner" id="spinner"></div>
+    <h1>Opening in IDE…</h1>
+    <p id="redirect-target"></p>
+    <a id="redirect-link" href="#">Click here if nothing happens</a>
+  </div>
+</div>
+
+<!-- Generator screen -->
+<div id="generator-screen">
+  <h1>IDE link generator</h1>
+  <p class="subtitle">Generuje gotowe linki do wklejenia w Confluence.</p>
+
   <div class="card">
-    <div class="section-label">Parametry</div>
-
     <div class="row">
       <label for="project-input">
         Nazwa projektu
@@ -34,21 +202,24 @@
     <div class="row">
       <label for="class-input">Klasa (FQN)</label>
       <input type="text" id="class-input" placeholder="com.example.MyClass" oninput="generate()" />
-      <div class="hint">Wklej pełną nazwę klasy — np. <code>com.rtm.service.RequirementsEntityMigrator</code></div>
+      <div class="hint">Pełna nazwa klasy, np. <code>com.rtm.service.RequirementsEntityMigrator</code></div>
+      <div class="error" id="error-msg">Uzupełnij oba pola.</div>
     </div>
 
-    <div class="row">
-      <label>Gotowy link do Confluence</label>
+    <div class="result-wrap">
+      <div class="result-label">Gotowy link</div>
       <div class="result-box empty" id="result">Uzupełnij pola powyżej…</div>
-      <div class="base-info" id="base-info"></div>
+      <div class="base-hint" id="base-hint"></div>
     </div>
 
     <div class="actions">
       <button id="copy-btn" onclick="copyLink()" disabled>
-        <i class="ti ti-copy" aria-hidden="true"></i> Kopiuj
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Kopiuj
       </button>
       <button id="test-btn" onclick="testLink()" disabled>
-        <i class="ti ti-external-link" aria-hidden="true"></i> Testuj
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Testuj
       </button>
       <span class="badge" id="copy-badge">Skopiowano!</span>
     </div>
@@ -56,76 +227,93 @@
 </div>
 
 <script>
+  const ALLOWED = ["jetbrains://", "idea://", "vscode://", "webstorm://", "phpstorm://", "pycharm://"];
   const LS_PROJECT = "ide-link-gen-project";
 
-  const projEl = document.getElementById("project-input");
-  const classEl = document.getElementById("class-input");
-  const resultEl = document.getElementById("result");
-  const copyBtn = document.getElementById("copy-btn");
-  const testBtn = document.getElementById("test-btn");
-  const baseInfoEl = document.getElementById("base-info");
-  const projDot = document.getElementById("proj-dot");
-
-  let projTimer = null;
-
-  const savedProj = localStorage.getItem(LS_PROJECT);
-  if (savedProj) projEl.value = savedProj;
-
   function getBase() {
-    const loc = window.location;
-    return loc.origin + loc.pathname.replace(/\/?$/, "/");
+    return window.location.origin + window.location.pathname.replace(/\/?$/, "/");
   }
 
-  baseInfoEl.textContent = "Base URL: " + getBase();
+  const params = new URLSearchParams(window.location.search);
+  const target = params.get("url");
 
-  function onProjectInput() {
-    clearTimeout(projTimer);
-    projTimer = setTimeout(() => {
-      const val = projEl.value.trim();
-      if (val) {
-        localStorage.setItem(LS_PROJECT, val);
-        projDot.classList.add("show");
-        setTimeout(() => projDot.classList.remove("show"), 2000);
+  if (target && ALLOWED.some(p => target.startsWith(p))) {
+    // ── REDIRECT MODE ──
+    document.getElementById("redirect-screen").style.display = "flex";
+    document.getElementById("redirect-target").textContent = decodeURIComponent(target);
+    document.getElementById("redirect-link").href = target;
+    window.location = target;
+  } else {
+    // ── GENERATOR MODE ──
+    document.getElementById("redirect-screen").style.display = "none";
+    document.getElementById("generator-screen").style.display = "block";
+
+    const projEl    = document.getElementById("project-input");
+    const classEl   = document.getElementById("class-input");
+    const resultEl  = document.getElementById("result");
+    const copyBtn   = document.getElementById("copy-btn");
+    const testBtn   = document.getElementById("test-btn");
+    const projDot   = document.getElementById("proj-dot");
+    const baseHint  = document.getElementById("base-hint");
+
+    baseHint.textContent = "Base URL: " + getBase();
+
+    const saved = localStorage.getItem(LS_PROJECT);
+    if (saved) projEl.value = saved;
+
+    let projTimer = null;
+
+    window.onProjectInput = function () {
+      clearTimeout(projTimer);
+      projTimer = setTimeout(() => {
+        const val = projEl.value.trim();
+        if (val) {
+          localStorage.setItem(LS_PROJECT, val);
+          projDot.classList.add("show");
+          setTimeout(() => projDot.classList.remove("show"), 2000);
+        }
+      }, 600);
+      generate();
+    };
+
+    window.generate = function () {
+      const project = projEl.value.trim();
+      const fqn = classEl.value.trim();
+
+      if (!project || !fqn) {
+        resultEl.textContent = "Uzupełnij pola powyżej…";
+        resultEl.className = "result-box empty";
+        copyBtn.disabled = true;
+        testBtn.disabled = true;
+        return;
       }
-    }, 600);
+
+      const ideUrl = "jetbrains://idea/navigate/reference?project=" + encodeURIComponent(project) + "&fqn=" + encodeURIComponent(fqn);
+      const full = getBase() + "?url=" + encodeURIComponent(ideUrl);
+
+      resultEl.textContent = full;
+      resultEl.className = "result-box";
+      copyBtn.disabled = false;
+      testBtn.disabled = false;
+    };
+
+    window.copyLink = function () {
+      const text = resultEl.textContent;
+      if (!text || resultEl.classList.contains("empty")) return;
+      navigator.clipboard.writeText(text).then(() => {
+        const b = document.getElementById("copy-badge");
+        b.classList.add("show");
+        setTimeout(() => b.classList.remove("show"), 2000);
+      });
+    };
+
+    window.testLink = function () {
+      const text = resultEl.textContent;
+      if (text && !resultEl.classList.contains("empty")) window.open(text, "_blank");
+    };
+
     generate();
   }
-
-  function generate() {
-    const project = projEl.value.trim();
-    const fqn = classEl.value.trim();
-
-    if (!project || !fqn) {
-      resultEl.textContent = "Uzupełnij pola powyżej…";
-      resultEl.className = "result-box empty";
-      copyBtn.disabled = true;
-      testBtn.disabled = true;
-      return;
-    }
-
-    const ideUrl = `jetbrains://idea/navigate/reference?project=${encodeURIComponent(project)}&fqn=${encodeURIComponent(fqn)}`;
-    const full = getBase() + "?url=" + encodeURIComponent(ideUrl);
-
-    resultEl.textContent = full;
-    resultEl.className = "result-box";
-    copyBtn.disabled = false;
-    testBtn.disabled = false;
-  }
-
-  function copyLink() {
-    const text = resultEl.textContent;
-    if (!text || resultEl.classList.contains("empty")) return;
-    navigator.clipboard.writeText(text).then(() => {
-      const b = document.getElementById("copy-badge");
-      b.classList.add("show");
-      setTimeout(() => b.classList.remove("show"), 2000);
-    });
-  }
-
-  function testLink() {
-    const text = resultEl.textContent;
-    if (text && !resultEl.classList.contains("empty")) window.open(text, "_blank");
-  }
-
-  generate();
 </script>
+</body>
+</html>
